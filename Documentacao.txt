@@ -1,0 +1,2092 @@
+Estrutura do Projeto
+text
+image-to-gcode/
+├── src/
+│   ├── index.html
+│   ├── css/
+│   │   └── style.css
+│   ├── js/
+│   │   ├── main.js
+│   │   ├── gcode-generator.js
+│   │   ├── image-processor.js
+│   │   └── simulator.js
+│   └── assets/
+│       └── icons/
+├── docs/
+│   └── README.md
+├── .gitignore
+├── package.json
+├── README.md
+└── LICENSE
+1. package.json (Gerenciamento de dependências)
+json
+{
+  "name": "image-to-gcode-converter",
+  "version": "1.0.0",
+  "description": "Conversor profissional de imagens para G-Code CNC com simulador integrado",
+  "main": "src/index.html",
+  "scripts": {
+    "start": "live-server src --port=3000",
+    "build": "copyfiles -u 1 src/**/* dist",
+    "deploy": "gh-pages -d src"
+  },
+  "keywords": ["cnc", "gcode", "image-processing", "cad-cam"],
+  "author": "Seu Nome",
+  "license": "MIT",
+  "devDependencies": {
+    "live-server": "^1.2.2",
+    "copyfiles": "^2.4.1",
+    "gh-pages": "^5.0.0"
+  }
+}
+2. src/index.html (Estrutura principal)
+html
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image2GCode Professional - Conversor CNC</title>
+    
+    <!-- Meta tags para SEO -->
+    <meta name="description" content="Conversor profissional de imagens para G-Code CNC com simulador em tempo real">
+    <meta name="keywords" content="CNC, G-Code, Image Processing, CAD/CAM, Router">
+    <meta name="author" content="Seu Nome">
+    
+    <!-- Open Graph para compartilhamento -->
+    <meta property="og:title" content="Image2GCode Professional">
+    <meta property="og:description" content="Converta imagens em código CNC profissionalmente">
+    <meta property="og:type" content="website">
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="assets/icons/favicon.png">
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="css/style.css">
+    
+    <!-- Fontes e ícones -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <!-- Header com navegação -->
+    <header class="header">
+        <nav class="nav-container">
+            <div class="logo">
+                <i class="fas fa-cogs"></i>
+                <span>Image2GCode<span class="highlight">Pro</span></span>
+            </div>
+            <div class="nav-links">
+                <a href="#converter" class="active">Conversor</a>
+                <a href="#simulator">Simulador</a>
+                <a href="#docs">Documentação</a>
+                <a href="#about">Sobre</a>
+            </div>
+            <div class="nav-actions">
+                <button class="btn-icon" id="themeToggle">
+                    <i class="fas fa-moon"></i>
+                </button>
+                <button class="btn-icon" id="helpBtn">
+                    <i class="fas fa-question-circle"></i>
+                </button>
+            </div>
+        </nav>
+    </header>
+
+    <!-- Conteúdo principal -->
+    <main class="main-container">
+        <!-- Área de Upload e Preview -->
+        <section class="upload-section" id="converter">
+            <div class="section-header">
+                <h2><i class="fas fa-upload"></i> Upload da Imagem</h2>
+                <div class="header-actions">
+                    <span class="badge" id="imageInfo"></span>
+                </div>
+            </div>
+            
+            <div class="upload-area" id="dropZone">
+                <input type="file" id="fileInput" accept="image/*" hidden>
+                <i class="fas fa-cloud-upload-alt upload-icon"></i>
+                <h3>Arraste sua imagem aqui</h3>
+                <p>ou <span class="link">clique para selecionar</span></p>
+                <small>Formatos suportados: PNG, JPG, JPEG, BMP, GIF (max. 10MB)</small>
+            </div>
+
+            <div class="preview-container" id="previewContainer" style="display: none;">
+                <div class="preview-toolbar">
+                    <h4><i class="fas fa-eye"></i> Pré-visualização</h4>
+                    <button class="btn-small" id="removeImage">
+                        <i class="fas fa-times"></i> Remover
+                    </button>
+                </div>
+                <div class="preview-image-wrapper">
+                    <img id="imagePreview" alt="Preview da imagem">
+                    <canvas id="processingCanvas" style="display: none;"></canvas>
+                </div>
+                <div class="image-stats">
+                    <span><i class="fas fa-arrows-alt"></i> <span id="imageDimensions">0x0</span> px</span>
+                    <span><i class="fas fa-weight"></i> <span id="imageSize">0</span> KB</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Painel de Configurações -->
+        <section class="config-section">
+            <div class="section-header">
+                <h2><i class="fas fa-sliders-h"></i> Parâmetros de Corte</h2>
+                <button class="btn-small" id="resetConfig">
+                    <i class="fas fa-undo"></i> Restaurar padrão
+                </button>
+            </div>
+
+            <div class="config-grid">
+                <!-- Parâmetros de corte -->
+                <div class="config-card">
+                    <h3><i class="fas fa-cut"></i> Parâmetros de Corte</h3>
+                    
+                    <div class="param-group">
+                        <label>
+                            <span>Profundidade de corte (Z)</span>
+                            <div class="param-input">
+                                <input type="number" id="cutDepth" value="-1.0" step="0.1" min="-10" max="0">
+                                <span class="unit">mm</span>
+                            </div>
+                        </label>
+                        <small>Negativo para baixo</small>
+                    </div>
+
+                    <div class="param-group">
+                        <label>
+                            <span>Velocidade de avanço</span>
+                            <div class="param-input">
+                                <input type="number" id="feedRate" value="1000" step="50" min="100" max="5000">
+                                <span class="unit">mm/min</span>
+                            </div>
+                        </label>
+                    </div>
+
+                    <div class="param-group">
+                        <label>
+                            <span>Velocidade de penetração</span>
+                            <div class="param-input">
+                                <input type="number" id="plungeRate" value="500" step="50" min="50" max="2000">
+                                <span class="unit">mm/min</span>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Parâmetros de segurança -->
+                <div class="config-card">
+                    <h3><i class="fas fa-shield-alt"></i> Segurança</h3>
+                    
+                    <div class="param-group">
+                        <label>
+                            <span>Altura de segurança</span>
+                            <div class="param-input">
+                                <input type="number" id="safeHeight" value="5.0" step="0.5" min="1" max="50">
+                                <span class="unit">mm</span>
+                            </div>
+                        </label>
+                    </div>
+
+                    <div class="param-group">
+                        <label>
+                            <span>Altura de recuo</span>
+                            <div class="param-input">
+                                <input type="number" id="retractHeight" value="2.0" step="0.1" min="0.5" max="10">
+                                <span class="unit">mm</span>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Processamento da imagem -->
+                <div class="config-card">
+                    <h3><i class="fas fa-image"></i> Processamento</h3>
+                    
+                    <div class="param-group">
+                        <label>
+                            <span>Resolução (stepover)</span>
+                            <div class="param-input">
+                                <input type="number" id="resolution" value="0.5" step="0.1" min="0.1" max="5">
+                                <span class="unit">mm</span>
+                            </div>
+                        </label>
+                        <small>Distância entre linhas</small>
+                    </div>
+
+                    <div class="param-group">
+                        <label>
+                            <span>Limiar de corte</span>
+                            <div class="param-input">
+                                <input type="range" id="threshold" min="0" max="255" value="128">
+                                <input type="number" id="thresholdValue" value="128" min="0" max="255">
+                            </div>
+                        </label>
+                    </div>
+
+                    <div class="param-group checkbox">
+                        <label>
+                            <input type="checkbox" id="invertColors">
+                            <span>Inverter cores (negativo)</span>
+                        </label>
+                    </div>
+
+                    <div class="param-group checkbox">
+                        <label>
+                            <input type="checkbox" id="optimizePath" checked>
+                            <span>Otimizar caminho</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Escala e posicionamento -->
+                <div class="config-card">
+                    <h3><i class="fas fa-ruler"></i> Escala</h3>
+                    
+                    <div class="param-group">
+                        <label>
+                            <span>Largura (X)</span>
+                            <div class="param-input">
+                                <input type="number" id="widthScale" value="100" step="1" min="1" max="1000">
+                                <span class="unit">mm</span>
+                            </div>
+                        </label>
+                    </div>
+
+                    <div class="param-group">
+                        <label>
+                            <span>Altura (Y)</span>
+                            <div class="param-input">
+                                <input type="number" id="heightScale" value="100" step="1" min="1" max="1000">
+                                <span class="unit">mm</span>
+                            </div>
+                        </label>
+                    </div>
+
+                    <div class="param-group checkbox">
+                        <label>
+                            <input type="checkbox" id="maintainAspect" checked>
+                            <span>Manter proporção</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <button class="btn-primary btn-large" id="generateBtn" disabled>
+                <i class="fas fa-cogs"></i> Gerar G-Code
+            </button>
+        </section>
+
+        <!-- Área de G-Code e Simulação -->
+        <section class="output-section" id="simulator">
+            <div class="section-header">
+                <h2><i class="fas fa-code"></i> G-Code Gerado</h2>
+                <div class="header-actions">
+                    <span class="badge" id="gcodeStats">0 linhas</span>
+                </div>
+            </div>
+
+            <div class="output-grid">
+                <!-- Editor G-Code -->
+                <div class="output-panel">
+                    <div class="panel-toolbar">
+                        <div class="toolbar-group">
+                            <button class="btn-icon" id="copyGCode" title="Copiar">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                            <button class="btn-icon" id="downloadGCode" title="Download">
+                                <i class="fas fa-download"></i>
+                            </button>
+                            <button class="btn-icon" id="formatGCode" title="Formatar">
+                                <i class="fas fa-align-left"></i>
+                            </button>
+                        </div>
+                        <select id="gcodeFormat" class="select-small">
+                            <option value="nc">.nc (Mach3)</option>
+                            <option value="tap">.tap (LinuxCNC)</option>
+                            <option value="txt">.txt (Genérico)</option>
+                        </select>
+                    </div>
+                    <div class="gcode-editor" id="gcodeEditor" contenteditable="false"></div>
+                </div>
+
+                <!-- Simulador 2D/3D -->
+                <div class="simulator-panel">
+                    <div class="panel-toolbar">
+                        <div class="toolbar-group">
+                            <button class="btn-icon active" id="sim2d" title="Visualização 2D">
+                                <i class="fas fa-vector-square"></i>
+                            </button>
+                            <button class="btn-icon" id="sim3d" title="Visualização 3D">
+                                <i class="fas fa-cube"></i>
+                            </button>
+                        </div>
+                        <div class="toolbar-group">
+                            <button class="btn-icon" id="zoomIn" title="Zoom +">
+                                <i class="fas fa-search-plus"></i>
+                            </button>
+                            <button class="btn-icon" id="zoomOut" title="Zoom -">
+                                <i class="fas fa-search-minus"></i>
+                            </button>
+                            <button class="btn-icon" id="fitView" title="Ajustar à tela">
+                                <i class="fas fa-expand"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="simulator-container">
+                        <canvas id="simulatorCanvas" width="600" height="400"></canvas>
+                        <div class="simulator-overlay" id="simulationStatus">
+                            <span>Pronto para simular</span>
+                        </div>
+                    </div>
+                    <div class="simulator-controls">
+                        <button class="btn-primary" id="simulateBtn" disabled>
+                            <i class="fas fa-play"></i> Simular
+                        </button>
+                        <button class="btn-secondary" id="clearSimulation">
+                            <i class="fas fa-stop"></i> Limpar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Status Bar -->
+    <footer class="status-bar">
+        <div class="status-item">
+            <i class="fas fa-info-circle"></i>
+            <span id="statusMessage">Aguardando imagem...</span>
+        </div>
+        <div class="status-item">
+            <i class="fas fa-microchip"></i>
+            <span id="processingTime">0 ms</span>
+        </div>
+        <div class="status-item">
+            <i class="fas fa-memory"></i>
+            <span id="memoryUsage">0 MB</span>
+        </div>
+    </footer>
+
+    <!-- Templates para componentes dinâmicos -->
+    <template id="tooltipTemplate">
+        <div class="custom-tooltip"></div>
+    </template>
+
+    <!-- Scripts modulares -->
+    <script type="module" src="js/main.js"></script>
+</body>
+</html>
+3. src/css/style.css (Estilos profissionais)
+css
+/* Variáveis CSS para temas */
+:root {
+    --primary-color: #2563eb;
+    --primary-dark: #1d4ed8;
+    --secondary-color: #64748b;
+    --success-color: #22c55e;
+    --danger-color: #ef4444;
+    --warning-color: #f59e0b;
+    --dark-bg: #0f172a;
+    --light-bg: #f8fafc;
+    --card-bg: #ffffff;
+    --text-primary: #1e293b;
+    --text-secondary: #64748b;
+    --border-color: #e2e8f0;
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+    --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+[data-theme="dark"] {
+    --dark-bg: #f8fafc;
+    --light-bg: #0f172a;
+    --card-bg: #1e293b;
+    --text-primary: #f1f5f9;
+    --text-secondary: #94a3b8;
+    --border-color: #334155;
+}
+
+/* Reset e estilos base */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: var(--font-sans);
+    background: var(--light-bg);
+    color: var(--text-primary);
+    line-height: 1.5;
+    transition: background-color 0.3s, color 0.3s;
+}
+
+/* Header e navegação */
+.header {
+    background: var(--card-bg);
+    border-bottom: 1px solid var(--border-color);
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    backdrop-filter: blur(8px);
+    background: rgba(var(--card-bg-rgb), 0.9);
+}
+
+.nav-container {
+    max-width: 1440px;
+    margin: 0 auto;
+    padding: 1rem 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.logo {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 1.5rem;
+    font-weight: 700;
+}
+
+.logo i {
+    color: var(--primary-color);
+}
+
+.highlight {
+    color: var(--primary-color);
+}
+
+.nav-links {
+    display: flex;
+    gap: 2rem;
+}
+
+.nav-links a {
+    text-decoration: none;
+    color: var(--text-secondary);
+    font-weight: 500;
+    transition: color 0.2s;
+    padding: 0.5rem 0;
+    position: relative;
+}
+
+.nav-links a:hover,
+.nav-links a.active {
+    color: var(--primary-color);
+}
+
+.nav-links a.active::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--primary-color);
+    border-radius: 2px;
+}
+
+.nav-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.btn-icon {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 1.2rem;
+    padding: 0.5rem;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-icon:hover {
+    background: var(--border-color);
+    color: var(--primary-color);
+}
+
+/* Main container */
+.main-container {
+    max-width: 1440px;
+    margin: 0 auto;
+    padding: 2rem;
+    display: grid;
+    gap: 2rem;
+}
+
+/* Seções */
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.section-header h2 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.section-header h2 i {
+    color: var(--primary-color);
+}
+
+/* Upload area */
+.upload-section {
+    background: var(--card-bg);
+    border-radius: 1rem;
+    padding: 1.5rem;
+    box-shadow: var(--shadow-md);
+}
+
+.upload-area {
+    border: 2px dashed var(--border-color);
+    border-radius: 1rem;
+    padding: 3rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s;
+    background: var(--light-bg);
+}
+
+.upload-area:hover {
+    border-color: var(--primary-color);
+    background: rgba(37, 99, 235, 0.05);
+}
+
+.upload-area.dragover {
+    border-color: var(--primary-color);
+    background: rgba(37, 99, 235, 0.1);
+    transform: scale(1.02);
+}
+
+.upload-icon {
+    font-size: 4rem;
+    color: var(--primary-color);
+    margin-bottom: 1rem;
+}
+
+.upload-area h3 {
+    font-size: 1.2rem;
+    margin-bottom: 0.5rem;
+}
+
+.upload-area .link {
+    color: var(--primary-color);
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+.upload-area small {
+    display: block;
+    margin-top: 1rem;
+    color: var(--text-secondary);
+}
+
+/* Preview container */
+.preview-container {
+    margin-top: 1.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: 0.75rem;
+    overflow: hidden;
+}
+
+.preview-toolbar {
+    background: var(--light-bg);
+    padding: 0.75rem 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.preview-toolbar h4 {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.btn-small {
+    padding: 0.25rem 0.75rem;
+    border-radius: 0.375rem;
+    border: 1px solid var(--border-color);
+    background: var(--card-bg);
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-small:hover {
+    background: var(--border-color);
+}
+
+.preview-image-wrapper {
+    padding: 1rem;
+    text-align: center;
+    background: var(--light-bg);
+}
+
+.preview-image-wrapper img {
+    max-width: 100%;
+    max-height: 300px;
+    border-radius: 0.5rem;
+    box-shadow: var(--shadow-sm);
+}
+
+.image-stats {
+    padding: 0.75rem 1rem;
+    background: var(--light-bg);
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    gap: 2rem;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+/* Configurações */
+.config-section {
+    background: var(--card-bg);
+    border-radius: 1rem;
+    padding: 1.5rem;
+    box-shadow: var(--shadow-md);
+}
+
+.config-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.config-card {
+    background: var(--light-bg);
+    border-radius: 0.75rem;
+    padding: 1.5rem;
+    border: 1px solid var(--border-color);
+}
+
+.config-card h3 {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+    font-size: 1.1rem;
+}
+
+.config-card h3 i {
+    color: var(--primary-color);
+}
+
+.param-group {
+    margin-bottom: 1.25rem;
+}
+
+.param-group label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+.param-input {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.param-input input[type="number"] {
+    flex: 1;
+    padding: 0.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: 0.375rem;
+    background: var(--card-bg);
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+}
+
+.param-input .unit {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    min-width: 3rem;
+}
+
+.param-group.checkbox {
+    display: flex;
+    align-items: center;
+}
+
+.param-group.checkbox label {
+    flex-direction: row;
+    align-items: center;
+    gap: 0.75rem;
+    cursor: pointer;
+}
+
+.param-group small {
+    display: block;
+    margin-top: 0.25rem;
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+}
+
+/* Botões principais */
+.btn-primary {
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 0.5rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.btn-primary:hover:not(:disabled) {
+    background: var(--primary-dark);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+}
+
+.btn-primary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.btn-large {
+    width: 100%;
+    padding: 1rem;
+    font-size: 1.1rem;
+}
+
+.btn-secondary {
+    background: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    padding: 0.75rem 1.5rem;
+    border-radius: 0.5rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-secondary:hover {
+    background: var(--border-color);
+}
+
+/* Output section */
+.output-section {
+    background: var(--card-bg);
+    border-radius: 1rem;
+    padding: 1.5rem;
+    box-shadow: var(--shadow-md);
+}
+
+.output-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+}
+
+.output-panel,
+.simulator-panel {
+    background: var(--light-bg);
+    border-radius: 0.75rem;
+    border: 1px solid var(--border-color);
+    overflow: hidden;
+}
+
+.panel-toolbar {
+    padding: 0.75rem;
+    background: var(--card-bg);
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.toolbar-group {
+    display: flex;
+    gap: 0.25rem;
+}
+
+.select-small {
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.375rem;
+    border: 1px solid var(--border-color);
+    background: var(--light-bg);
+    color: var(--text-primary);
+    font-size: 0.875rem;
+}
+
+.gcode-editor {
+    height: 400px;
+    overflow-y: auto;
+    padding: 1rem;
+    font-family: 'Courier New', monospace;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    background: var(--card-bg);
+    color: var(--text-primary);
+}
+
+.simulator-container {
+    position: relative;
+    height: 400px;
+    background: var(--card-bg);
+}
+
+#simulatorCanvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+.simulator-overlay {
+    position: absolute;
+    bottom: 1rem;
+    right: 1rem;
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 2rem;
+    font-size: 0.875rem;
+    backdrop-filter: blur(4px);
+}
+
+.simulator-controls {
+    padding: 1rem;
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+}
+
+/* Status bar */
+.status-bar {
+    background: var(--card-bg);
+    border-top: 1px solid var(--border-color);
+    padding: 0.75rem 2rem;
+    display: flex;
+    gap: 2rem;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    position: sticky;
+    bottom: 0;
+}
+
+.status-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+/* Badges */
+.badge {
+    background: var(--primary-color);
+    color: white;
+    padding: 0.25rem 0.75rem;
+    border-radius: 2rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+/* Tooltips */
+.custom-tooltip {
+    position: absolute;
+    background: var(--dark-bg);
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
+    pointer-events: none;
+    z-index: 1000;
+    box-shadow: var(--shadow-lg);
+}
+
+/* Responsividade */
+@media (max-width: 1024px) {
+    .config-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .output-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .nav-links {
+        display: none;
+    }
+    
+    .config-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .main-container {
+        padding: 1rem;
+    }
+    
+    .status-bar {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+}
+
+/* Animações */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.fade-in {
+    animation: fadeIn 0.3s ease-out;
+}
+
+/* Loading spinner */
+.spinner {
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--border-color);
+    border-top-color: var(--primary-color);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+4. src/js/main.js (Ponto de entrada principal)
+javascript
+/**
+ * Image to G-Code Professional Converter
+ * Main entry point - ES6 Module
+ */
+
+import { GCodeGenerator } from './gcode-generator.js';
+import { ImageProcessor } from './image-processor.js';
+import { Simulator } from './simulator.js';
+
+class ImageToGCodeApp {
+    constructor() {
+        this.imageProcessor = new ImageProcessor();
+        this.gcodeGenerator = new GCodeGenerator();
+        this.simulator = new Simulator('simulatorCanvas');
+        
+        this.currentImage = null;
+        this.currentGCode = '';
+        this.config = this.getDefaultConfig();
+        
+        this.initializeEventListeners();
+        this.initializeTheme();
+        this.initializeUI();
+    }
+
+    getDefaultConfig() {
+        return {
+            cutDepth: -1.0,
+            feedRate: 1000,
+            plungeRate: 500,
+            safeHeight: 5.0,
+            retractHeight: 2.0,
+            resolution: 0.5,
+            threshold: 128,
+            invertColors: false,
+            optimizePath: true,
+            widthScale: 100,
+            heightScale: 100,
+            maintainAspect: true
+        };
+    }
+
+    initializeEventListeners() {
+        // Upload de imagem
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        
+        dropZone.addEventListener('click', () => fileInput.click());
+        dropZone.addEventListener('dragover', this.handleDragOver.bind(this));
+        dropZone.addEventListener('dragleave', this.handleDragLeave.bind(this));
+        dropZone.addEventListener('drop', this.handleDrop.bind(this));
+        fileInput.addEventListener('change', this.handleFileSelect.bind(this));
+
+        // Configurações
+        document.getElementById('resetConfig').addEventListener('click', this.resetConfig.bind(this));
+        document.getElementById('generateBtn').addEventListener('click', this.generateGCode.bind(this));
+        
+        // Input listeners para atualizações em tempo real
+        this.attachConfigListeners();
+        
+        // Ações do G-Code
+        document.getElementById('copyGCode').addEventListener('click', this.copyGCode.bind(this));
+        document.getElementById('downloadGCode').addEventListener('click', this.downloadGCode.bind(this));
+        document.getElementById('formatGCode').addEventListener('click', this.formatGCode.bind(this));
+        
+        // Simulador
+        document.getElementById('simulateBtn').addEventListener('click', this.simulate.bind(this));
+        document.getElementById('clearSimulation').addEventListener('click', this.clearSimulation.bind(this));
+        
+        // Controles de visualização
+        document.getElementById('zoomIn').addEventListener('click', () => this.simulator.zoom(1.2));
+        document.getElementById('zoomOut').addEventListener('click', () => this.simulator.zoom(0.8));
+        document.getElementById('fitView').addEventListener('click', () => this.simulator.fitToView());
+        
+        // Tema
+        document.getElementById('themeToggle').addEventListener('click', this.toggleTheme.bind(this));
+        
+        // Remover imagem
+        document.getElementById('removeImage').addEventListener('click', this.removeImage.bind(this));
+    }
+
+    attachConfigListeners() {
+        const configInputs = [
+            'cutDepth', 'feedRate', 'plungeRate', 'safeHeight',
+            'retractHeight', 'resolution', 'threshold', 'thresholdValue',
+            'invertColors', 'optimizePath', 'widthScale', 'heightScale',
+            'maintainAspect'
+        ];
+
+        configInputs.forEach(id => {
+            const element = document.getElementById(id);
+            if (element) {
+                element.addEventListener('input', (e) => {
+                    this.updateConfig(id, e.target.value);
+                    if (id === 'threshold' && id === 'thresholdValue') {
+                        document.getElementById('thresholdValue').value = e.target.value;
+                        document.getElementById('threshold').value = e.target.value;
+                    }
+                });
+            }
+        });
+    }
+
+    updateConfig(key, value) {
+        if (key === 'invertColors' || key === 'optimizePath' || key === 'maintainAspect') {
+            this.config[key] = value === 'on' ? true : value;
+        } else {
+            this.config[key] = parseFloat(value);
+        }
+
+        // Atualizar preview se necessário
+        if (this.currentImage && (key === 'threshold' || key === 'invertColors')) {
+            this.updatePreview();
+        }
+    }
+
+    handleDragOver(e) {
+        e.preventDefault();
+        document.getElementById('dropZone').classList.add('dragover');
+    }
+
+    handleDragLeave(e) {
+        e.preventDefault();
+        document.getElementById('dropZone').classList.remove('dragover');
+    }
+
+    handleDrop(e) {
+        e.preventDefault();
+        document.getElementById('dropZone').classList.remove('dragover');
+        
+        const file = e.dataTransfer.files[0];
+        if (file && file.type.startsWith('image/')) {
+            this.processImage(file);
+        }
+    }
+
+    handleFileSelect(e) {
+        const file = e.target.files[0];
+        if (file) {
+            this.processImage(file);
+        }
+    }
+
+    async processImage(file) {
+        try {
+            this.updateStatus('Processando imagem...', 'info');
+            
+            // Validar tamanho
+            if (file.size > 10 * 1024 * 1024) {
+                throw new Error('Imagem muito grande. Máximo 10MB.');
+            }
+
+            // Carregar imagem
+            this.currentImage = await this.imageProcessor.loadImage(file);
+            
+            // Atualizar UI
+            this.updateImagePreview(file);
+            this.updateImageInfo(this.currentImage);
+            
+            // Habilitar botão de geração
+            document.getElementById('generateBtn').disabled = false;
+            
+            this.updateStatus('Imagem carregada com sucesso!', 'success');
+            
+        } catch (error) {
+            this.updateStatus(`Erro: ${error.message}`, 'error');
+            console.error(error);
+        }
+    }
+
+    updateImagePreview(file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const preview = document.getElementById('imagePreview');
+            preview.src = e.target.result;
+            document.getElementById('previewContainer').style.display = 'block';
+        };
+        reader.readAsDataURL(file);
+    }
+
+    updateImageInfo(image) {
+        document.getElementById('imageDimensions').textContent = 
+            `${image.width}x${image.height}`;
+        document.getElementById('imageSize').textContent = 
+            (image.size / 1024).toFixed(2);
+    }
+
+    async generateGCode() {
+        try {
+            this.updateStatus('Gerando G-Code...', 'info');
+            
+            const startTime = performance.now();
+            
+            // Processar imagem para pontos de corte
+            const points = await this.imageProcessor.processImage(
+                this.currentImage,
+                this.config
+            );
+            
+            // Gerar G-Code
+            this.currentGCode = this.gcodeGenerator.generate(points, this.config);
+            
+            // Atualizar editor
+            document.getElementById('gcodeEditor').textContent = this.currentGCode;
+            
+            // Atualizar estatísticas
+            const lines = this.currentGCode.split('\n').length;
+            document.getElementById('gcodeStats').textContent = `${lines} linhas`;
+            
+            // Habilitar botões
+            document.getElementById('simulateBtn').disabled = false;
+            document.getElementById('copyGCode').disabled = false;
+            document.getElementById('downloadGCode').disabled = false;
+            
+            const endTime = performance.now();
+            document.getElementById('processingTime').textContent = 
+                `${(endTime - startTime).toFixed(0)} ms`;
+            
+            this.updateStatus('G-Code gerado com sucesso!', 'success');
+            
+        } catch (error) {
+            this.updateStatus(`Erro ao gerar G-Code: ${error.message}`, 'error');
+            console.error(error);
+        }
+    }
+
+    simulate() {
+        try {
+            this.simulator.loadGCode(this.currentGCode);
+            this.simulator.animate();
+            this.updateStatus('Simulação em andamento...', 'info');
+        } catch (error) {
+            this.updateStatus(`Erro na simulação: ${error.message}`, 'error');
+        }
+    }
+
+    clearSimulation() {
+        this.simulator.clear();
+        this.updateStatus('Simulação limpa', 'info');
+    }
+
+    async copyGCode() {
+        try {
+            await navigator.clipboard.writeText(this.currentGCode);
+            this.updateStatus('G-Code copiado!', 'success');
+        } catch (error) {
+            this.updateStatus('Erro ao copiar', 'error');
+        }
+    }
+
+    downloadGCode() {
+        const format = document.getElementById('gcodeFormat').value;
+        const blob = new Blob([this.currentGCode], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `output.${format}`;
+        a.click();
+        URL.revokeObjectURL(url);
+        
+        this.updateStatus('Download iniciado', 'success');
+    }
+
+    formatGCode() {
+        // Implementar formatação do G-Code
+        this.updateStatus('G-Code formatado', 'info');
+    }
+
+    resetConfig() {
+        this.config = this.getDefaultConfig();
+        
+        // Atualizar inputs
+        Object.keys(this.config).forEach(key => {
+            const element = document.getElementById(key);
+            if (element) {
+                if (element.type === 'checkbox') {
+                    element.checked = this.config[key];
+                } else {
+                    element.value = this.config[key];
+                }
+            }
+        });
+        
+        this.updateStatus('Configurações restauradas', 'info');
+    }
+
+    removeImage() {
+        this.currentImage = null;
+        this.currentGCode = '';
+        
+        document.getElementById('previewContainer').style.display = 'none';
+        document.getElementById('imagePreview').src = '#';
+        document.getElementById('generateBtn').disabled = true;
+        document.getElementById('simulateBtn').disabled = true;
+        document.getElementById('gcodeEditor').textContent = '';
+        
+        this.updateStatus('Imagem removida', 'info');
+    }
+
+    initializeTheme() {
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+        
+        const icon = document.querySelector('#themeToggle i');
+        icon.className = savedTheme === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
+    }
+
+    toggleTheme() {
+        const currentTheme = document.documentElement.getAttribute('data-theme');
+        const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+        
+        document.documentElement.setAttribute('data-theme', newTheme);
+        localStorage.setItem('theme', newTheme);
+        
+        const icon = document.querySelector('#themeToggle i');
+        icon.className = newTheme === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
+    }
+
+    initializeUI() {
+        this.updateStatus('Pronto para começar!', 'info');
+        
+        // Inicializar memória
+        if (performance.memory) {
+            setInterval(() => {
+                const memory = (performance.memory.usedJSHeapSize / (1024 * 1024)).toFixed(2);
+                document.getElementById('memoryUsage').textContent = `${memory} MB`;
+            }, 2000);
+        }
+    }
+
+    updateStatus(message, type = 'info') {
+        const statusEl = document.getElementById('statusMessage');
+        statusEl.textContent = message;
+        
+        // Opcional: adicionar ícone baseado no tipo
+        const icon = statusEl.previousElementSibling;
+        if (icon) {
+            icon.className = `fas fa-${this.getStatusIcon(type)}`;
+        }
+    }
+
+    getStatusIcon(type) {
+        const icons = {
+            info: 'info-circle',
+            success: 'check-circle',
+            error: 'exclamation-circle',
+            warning: 'exclamation-triangle'
+        };
+        return icons[type] || 'info-circle';
+    }
+
+    updatePreview() {
+        // Implementar preview em tempo real
+        if (this.currentImage) {
+            // Usar o canvas para mostrar preview do processamento
+        }
+    }
+}
+
+// Inicializar aplicação quando o DOM estiver pronto
+document.addEventListener('DOMContentLoaded', () => {
+    window.app = new ImageToGCodeApp();
+});
+5. src/js/image-processor.js (Processamento de imagem)
+javascript
+/**
+ * Image Processor Module
+ * Handles image loading, analysis and point generation
+ */
+
+export class ImageProcessor {
+    constructor() {
+        this.canvas = document.createElement('canvas');
+        this.ctx = this.canvas.getContext('2d', { willReadFrequently: true });
+    }
+
+    async loadImage(file) {
+        return new Promise((resolve, reject) => {
+            const img = new Image();
+            img.onload = () => {
+                resolve({
+                    element: img,
+                    width: img.width,
+                    height: img.height,
+                    size: file.size
+                });
+            };
+            img.onerror = reject;
+            img.src = URL.createObjectURL(file);
+        });
+    }
+
+    async processImage(image, config) {
+        // Redimensionar canvas para o tamanho da imagem
+        this.canvas.width = image.width;
+        this.canvas.height = image.height;
+        
+        // Desenhar imagem no canvas
+        this.ctx.drawImage(image.element, 0, 0);
+        
+        // Obter dados da imagem
+        const imageData = this.ctx.getImageData(0, 0, image.width, image.height);
+        const points = this.extractCuttingPoints(imageData, config);
+        
+        // Otimizar caminho se necessário
+        if (config.optimizePath) {
+            return this.optimizePath(points);
+        }
+        
+        return points;
+    }
+
+    extractCuttingPoints(imageData, config) {
+        const points = [];
+        const { width, height } = imageData;
+        const step = Math.max(1, Math.floor(config.resolution));
+        
+        // Escala para conversão de pixels para mm
+        const scaleX = config.widthScale / width;
+        const scaleY = config.heightScale / height;
+        
+        for (let y = 0; y < height; y += step) {
+            for (let x = 0; x < width; x += step) {
+                const index = (y * width + x) * 4;
+                
+                // Calcular brilho do pixel
+                const r = imageData.data[index];
+                const g = imageData.data[index + 1];
+                const b = imageData.data[index + 2];
+                const brightness = (r + g + b) / 3;
+                
+                // Aplicar inversão se necessário
+                const value = config.invertColors ? 255 - brightness : brightness;
+                
+                // Verificar se deve cortar
+                if (value < config.threshold) {
+                    points.push({
+                        x: x * scaleX,
+                        y: (height - y) * scaleY, // Inverter Y para coordenadas CNC
+                        z: config.cutDepth,
+                        cut: true
+                    });
+                }
+            }
+        }
+        
+        return points;
+    }
+
+    optimizePath(points) {
+        // Implementar otimização de caminho usando Nearest Neighbor
+        if (points.length === 0) return points;
+        
+        const optimized = [points[0]];
+        const remaining = points.slice(1);
+        
+        while (remaining.length > 0) {
+            const last = optimized[optimized.length - 1];
+            
+            // Encontrar ponto mais próximo
+            let nearestIndex = 0;
+            let nearestDistance = this.distance(last, remaining[0]);
+            
+            for (let i = 1; i < remaining.length; i++) {
+                const dist = this.distance(last, remaining[i]);
+                if (dist < nearestDistance) {
+                    nearestDistance = dist;
+                    nearestIndex = i;
+                }
+            }
+            
+            optimized.push(remaining[nearestIndex]);
+            remaining.splice(nearestIndex, 1);
+        }
+        
+        return optimized;
+    }
+
+    distance(p1, p2) {
+        const dx = p1.x - p2.x;
+        const dy = p1.y - p2.y;
+        return Math.sqrt(dx * dx + dy * dy);
+    }
+}
+6. src/js/gcode-generator.js (Gerador de G-Code)
+javascript
+/**
+ * G-Code Generator Module
+ * Generates optimized G-Code from cutting points
+ */
+
+export class GCodeGenerator {
+    constructor() {
+        this.gcode = [];
+    }
+
+    generate(points, config) {
+        this.gcode = [];
+        
+        this.addHeader(config);
+        this.generateToolpath(points, config);
+        this.addFooter(config);
+        
+        return this.gcode.join('\n');
+    }
+
+    addHeader(config) {
+        const date = new Date().toLocaleString();
+        
+        this.addComment('========================================');
+        this.addComment(`G-Code gerado em: ${date}`);
+        this.addComment('Image2GCode Professional v1.0');
+        this.addComment('========================================');
+        this.addComment('');
+        
+        // Configurações iniciais
+        this.addCommand('G90', 'Posicionamento absoluto');
+        this.addCommand('G21', 'Unidades em mm');
+        this.addCommand('G17', 'Plano XY');
+        this.addCommand('G40', 'Cancelar compensação de raio');
+        this.addCommand('G49', 'Cancelar compensação de altura');
+        this.addCommand('G80', 'Cancelar ciclos fixos');
+        this.addCommand('');
+        
+        // Mover para posição inicial segura
+        this.addCommand(`G0 Z${config.safeHeight}`, 'Subir para altura de segurança');
+        this.addCommand('G0 X0 Y0', 'Posicionar na origem');
+        this.addCommand('');
+        
+        this.addComment('Iniciando corte...');
+        this.addCommand(`F${config.feedRate}`, 'Configurar velocidade de avanço');
+    }
+
+    generateToolpath(points, config) {
+        if (points.length === 0) {
+            this.addComment('Nenhum ponto de corte encontrado!');
+            return;
+        }
+
+        let lastZ = config.safeHeight;
+        let lastX = 0;
+        let lastY = 0;
+
+        for (let i = 0; i < points.length; i++) {
+            const point = points[i];
+            
+            // Mover para posição X,Y se necessário
+            if (lastX !== point.x || lastY !== point.y) {
+                if (lastZ > config.safeHeight - 0.1) {
+                    this.addCommand(`G0 X${this.format(point.x)} Y${this.format(point.y)}`, 
+                        'Posicionamento rápido');
+                } else {
+                    // Se já estiver cortando, subir para recuo
+                    this.addCommand(`G0 Z${config.retractHeight}`, 'Recuar para próximo movimento');
+                    this.addCommand(`G0 X${this.format(point.x)} Y${this.format(point.y)}`, 
+                        'Mover para próxima posição');
+                }
+                
+                lastX = point.x;
+                lastY = point.y;
+            }
+            
+            // Se for ponto de corte, descer e cortar
+            if (point.cut) {
+                if (lastZ > config.cutDepth + 0.1) {
+                    // Descer para profundidade de corte
+                    this.addCommand(`G1 Z${this.format(config.cutDepth)} F${config.plungeRate}`, 
+                        'Penetrar no material');
+                    lastZ = config.cutDepth;
+                }
+                
+                // Pequeno movimento para garantir corte
+                if (i < points.length - 1 && points[i + 1].cut) {
+                    const next = points[i + 1];
+                    this.addCommand(`G1 X${this.format(next.x)} Y${this.format(next.y)}`, 
+                        'Corte contínuo');
+                    lastX = next.x;
+                    lastY = next.y;
+                }
+            }
+        }
+    }
+
+    addFooter(config) {
+        this.addCommand('');
+        this.addComment('Finalizando programa...');
+        this.addCommand(`G0 Z${config.safeHeight}`, 'Subir para altura segura');
+        this.addCommand('G0 X0 Y0', 'Retornar à origem');
+        this.addCommand('M30', 'Fim do programa');
+    }
+
+    format(value) {
+        // Formatar número com 3 casas decimais
+        return value.toFixed(3).replace(/\.?0+$/, '');
+    }
+
+    addCommand(command, comment = '') {
+        if (comment) {
+            this.gcode.push(`${command} ; ${comment}`);
+        } else {
+            this.gcode.push(command);
+        }
+    }
+
+    addComment(comment) {
+        this.gcode.push(`; ${comment}`);
+    }
+}
+7. src/js/simulator.js (Simulador)
+javascript
+/**
+ * Simulator Module
+ * Visualizes G-Code toolpath in 2D/3D
+ */
+
+export class Simulator {
+    constructor(canvasId) {
+        this.canvas = document.getElementById(canvasId);
+        this.ctx = this.canvas.getContext('2d');
+        
+        this.points = [];
+        this.currentPoint = 0;
+        this.animationId = null;
+        
+        this.zoom = 1.0;
+        this.offsetX = 0;
+        this.offsetY = 0;
+        this.dragging = false;
+        
+        this.initializeControls();
+    }
+
+    initializeControls() {
+        // Controles de zoom com wheel
+        this.canvas.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const delta = e.deltaY > 0 ? 0.9 : 1.1;
+            this.zoom(delta, e.offsetX, e.offsetY);
+        });
+
+        // Pan com mouse
+        this.canvas.addEventListener('mousedown', (e) => {
+            if (e.button === 0) {
+                this.dragging = true;
+                this.lastX = e.clientX;
+                this.lastY = e.clientY;
+            }
+        });
+
+        this.canvas.addEventListener('mousemove', (e) => {
+            if (this.dragging) {
+                const dx = e.clientX - this.lastX;
+                const dy = e.clientY - this.lastY;
+                this.pan(dx, dy);
+                this.lastX = e.clientX;
+                this.lastY = e.clientY;
+            }
+        });
+
+        this.canvas.addEventListener('mouseup', () => {
+            this.dragging = false;
+        });
+
+        this.canvas.addEventListener('mouseleave', () => {
+            this.dragging = false;
+        });
+    }
+
+    loadGCode(gcode) {
+        this.points = this.parseGCode(gcode);
+        this.currentPoint = 0;
+        this.draw();
+    }
+
+    parseGCode(gcode) {
+        const lines = gcode.split('\n');
+        const points = [];
+        let currentX = 0, currentY = 0, currentZ = 0;
+        
+        for (const line of lines) {
+            // Remover comentários
+            const code = line.split(';')[0].trim();
+            if (!code) continue;
+            
+            // Extrair comandos
+            const gMatch = code.match(/G0|G1|G2|G3/);
+            if (!gMatch) continue;
+            
+            const xMatch = code.match(/X([-\d.]+)/);
+            const yMatch = code.match(/Y([-\d.]+)/);
+            const zMatch = code.match(/Z([-\d.]+)/);
+            
+            if (xMatch) currentX = parseFloat(xMatch[1]);
+            if (yMatch) currentY = parseFloat(yMatch[1]);
+            if (zMatch) currentZ = parseFloat(zMatch[1]);
+            
+            points.push({
+                x: currentX,
+                y: currentY,
+                z: currentZ,
+                rapid: gMatch[0] === 'G0' // Movimento rápido
+            });
+        }
+        
+        return points;
+    }
+
+    draw() {
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        
+        // Desenhar fundo
+        this.ctx.fillStyle = '#f8fafc';
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        
+        // Desenhar grid
+        this.drawGrid();
+        
+        // Aplicar transformações
+        this.ctx.save();
+        this.ctx.translate(this.offsetX, this.offsetY);
+        this.ctx.scale(this.zoom, this.zoom);
+        
+        // Desenhar toolpath
+        this.drawToolpath();
+        
+        this.ctx.restore();
+    }
+
+    drawGrid() {
+        const step = 50 * this.zoom;
+        const offsetX = this.offsetX % step;
+        const offsetY = this.offsetY % step;
+        
+        this.ctx.strokeStyle = '#e2e8f0';
+        this.ctx.lineWidth = 1;
+        
+        // Linhas verticais
+        for (let x = offsetX; x < this.canvas.width; x += step) {
+            this.ctx.beginPath();
+            this.ctx.moveTo(x, 0);
+            this.ctx.lineTo(x, this.canvas.height);
+            this.ctx.stroke();
+        }
+        
+        // Linhas horizontais
+        for (let y = offsetY; y < this.canvas.height; y += step) {
+            this.ctx.beginPath();
+            this.ctx.moveTo(0, y);
+            this.ctx.lineTo(this.canvas.width, y);
+            this.ctx.stroke();
+        }
+    }
+
+    drawToolpath() {
+        if (this.points.length === 0) return;
+        
+        // Desenhar caminho
+        this.ctx.beginPath();
+        this.ctx.strokeStyle = '#2563eb';
+        this.ctx.lineWidth = 2 / this.zoom;
+        
+        let first = true;
+        for (let i = 0; i <= this.currentPoint; i++) {
+            const point = this.points[i];
+            if (!point) continue;
+            
+            const x = point.x;
+            const y = point.y;
+            
+            if (first) {
+                this.ctx.moveTo(x, y);
+                first = false;
+            } else {
+                if (point.rapid) {
+                    // Movimentos rápidos em linha tracejada
+                    this.ctx.stroke();
+                    this.ctx.beginPath();
+                    this.ctx.setLineDash([5, 3]);
+                    this.ctx.strokeStyle = '#94a3b8';
+                    this.ctx.moveTo(this.points[i-1].x, this.points[i-1].y);
+                    this.ctx.lineTo(x, y);
+                    this.ctx.stroke();
+                    this.ctx.beginPath();
+                    this.ctx.setLineDash([]);
+                    this.ctx.strokeStyle = '#2563eb';
+                    this.ctx.moveTo(x, y);
+                } else {
+                    this.ctx.lineTo(x, y);
+                }
+            }
+        }
+        
+        this.ctx.stroke();
+        
+        // Desenhar pontos
+        for (let i = 0; i <= this.currentPoint; i++) {
+            const point = this.points[i];
+            if (!point) continue;
+            
+            this.ctx.beginPath();
+            this.ctx.arc(point.x, point.y, 3 / this.zoom, 0, Math.PI * 2);
+            
+            if (point.rapid) {
+                this.ctx.fillStyle = '#94a3b8';
+            } else {
+                // Cor baseada na profundidade
+                const depthNormalized = Math.abs(point.z) / 5; // Assumindo profundidade máxima de 5mm
+                const hue = 240 * (1 - depthNormalized); // Azul para raso, vermelho para profundo
+                this.ctx.fillStyle = `hsl(${hue}, 100%, 50%)`;
+            }
+            
+            this.ctx.fill();
+        }
+    }
+
+    animate() {
+        const animateStep = () => {
+            if (this.currentPoint < this.points.length - 1) {
+                this.currentPoint++;
+                this.draw();
+                this.animationId = requestAnimationFrame(animateStep);
+            }
+        };
+        
+        this.currentPoint = 0;
+        if (this.animationId) {
+            cancelAnimationFrame(this.animationId);
+        }
+        this.animationId = requestAnimationFrame(animateStep);
+    }
+
+    clear() {
+        if (this.animationId) {
+            cancelAnimationFrame(this.animationId);
+        }
+        this.currentPoint = 0;
+        this.draw();
+    }
+
+    zoom(factor, mouseX, mouseY) {
+        const oldZoom = this.zoom;
+        this.zoom *= factor;
+        
+        // Ajustar offset para zoom centrado no mouse
+        if (mouseX !== undefined && mouseY !== undefined) {
+            const dx = mouseX - this.offsetX;
+            const dy = mouseY - this.offsetY;
+            
+            this.offsetX -= dx * (factor - 1);
+            this.offsetY -= dy * (factor - 1);
+        }
+        
+        this.draw();
+    }
+
+    pan(dx, dy) {
+        this.offsetX += dx;
+        this.offsetY += dy;
+        this.draw();
+    }
+
+    fitToView() {
+        if (this.points.length === 0) return;
+        
+        // Encontrar bounds
+        let minX = Infinity, maxX = -Infinity;
+        let minY = Infinity, maxY = -Infinity;
+        
+        for (const point of this.points) {
+            minX = Math.min(minX, point.x);
+            maxX = Math.max(maxX, point.x);
+            minY = Math.min(minY, point.y);
+            maxY = Math.max(maxY, point.y);
+        }
+        
+        const width = maxX - minX;
+        const height = maxY - minY;
+        
+        // Calcular zoom para caber na tela
+        const zoomX = (this.canvas.width - 100) / width;
+        const zoomY = (this.canvas.height - 100) / height;
+        this.zoom = Math.min(zoomX, zoomY, 5);
+        
+        // Centralizar
+        this.offsetX = (this.canvas.width - width * this.zoom) / 2 - minX * this.zoom;
+        this.offsetY = (this.canvas.height - height * this.zoom) / 2 - minY * this.zoom;
+        
+        this.draw();
+    }
+}
+8. .gitignore
+text
+# Dependencies
+node_modules/
+package-lock.json
+
+# Build outputs
+dist/
+build/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+npm-debug.log*
+
+# Environment
+.env
+.env.local
+.env.production
+
+# Temporary files
+tmp/
+temp/
+9. README.md (Documentação)
+markdown
+# Image to G-Code Professional Converter
+
+![License](https://img.shields.io/badge/license-MIT-blue.svg)
+![Version](https://img.shields.io/badge/version-1.0.0-green.svg)
+
+Conversor profissional de imagens para G-Code CNC com simulador integrado. Transforme qualquer imagem em trajetórias de corte para máquinas CNC.
+
+## 🚀 Características
+
+- **Upload intuitivo**: Arraste e solte ou selecione arquivos
+- **Pré-visualização em tempo real**: Veja a imagem antes de processar
+- **Parâmetros ajustáveis**: Controle total sobre profundidade, velocidade e resolução
+- **Simulador 2D/3D**: Visualize o caminho da ferramenta antes de enviar para a máquina
+- **Exportação multi-formato**: .nc, .tap, .txt
+- **Otimização de caminho**: Algoritmo para minimizar o tempo de usinagem
+- **Tema claro/escuro**: Interface adaptável
+- **Responsivo**: Funciona em desktop, tablet e mobile
+
+## 📋 Pré-requisitos
+
+- Node.js 14.x ou superior
+- Navegador moderno (Chrome, Firefox, Edge, Safari)
+
+## 🔧 Instalação
+
+1. Clone o repositório:
+```bash
+git clone https://github.com/seu-usuario/image-to-gcode.git
+cd image-to-gcode
+Instale as dependências:
+
+bash
+npm install
+Inicie o servidor de desenvolvimento:
+
+bash
+npm start
+Acesse http://localhost:3000 no seu navegador
+
+📖 Como usar
+1. Upload da imagem
+Arraste uma imagem para a área demarcada ou clique para selecionar
+
+Formatos suportados: PNG, JPG, JPEG, BMP, GIF (máx. 10MB)
+
+2. Configurar parâmetros
+Profundidade de corte: Valor negativo para baixo (ex: -1.0mm)
+
+Velocidades: Avanço e penetração em mm/min
+
+Resolução: Distância entre linhas (menor = mais detalhe)
+
+Limiar: Sensibilidade do corte (0-255)
+
+Escala: Dimensões finais da peça em mm
+
+3. Gerar G-Code
+Clique em "Gerar G-Code" para processar
+
+O código será exibido no painel direito
+
+4. Simular
+Use o botão "Simular" para visualizar o caminho
+
+Controles de zoom e pan para inspeção detalhada
+
+5. Exportar
+Copie para área de transferência
+
+Faça download no formato desejado
+
+⚙️ Parâmetros detalhados
+Parâmetro	Descrição	Faixa típica
+Profundidade de corte	Profundidade Z durante o corte	-10 a 0 mm
+Velocidade de avanço	Velocidade de corte em XY	500-3000 mm/min
+Velocidade de penetração	Velocidade de descida em Z	100-1000 mm/min
+Altura de segurança	Altura para movimentos rápidos	2-20 mm
+Altura de recuo	Altura entre passes	1-5 mm
+Resolução	Distância entre linhas	0.1-5 mm
+Limiar	Sensibilidade do corte	0-255
+🏗️ Estrutura do projeto
+text
+image-to-gcode/
+├── src/                    # Código fonte
+│   ├── index.html          # Página principal
+│   ├── css/                # Estilos
+│   │   └── style.css       # CSS principal
+│   ├── js/                 # JavaScript
+│   │   ├── main.js         # Ponto de entrada
+│   │   ├── image-processor.js  # Processamento de imagem
+│   │   ├── gcode-generator.js  # Geração de G-Code
+│   │   └── simulator.js    # Simulador
+│   └── assets/             # Recursos estáticos
+├── docs/                   # Documentação
+├── .gitignore             # Arquivos ignorados pelo Git
+├── package.json           # Dependências e scripts
+├── README.md              # Este arquivo
+└── LICENSE                # Licença MIT
+🛠️ Desenvolvimento
+Scripts disponíveis
+npm start - Inicia servidor de desenvolvimento
+
+npm run build - Prepara para produção
+
+npm run deploy - Publica no GitHub Pages
+
+Adicionando recursos
+Fork o projeto
+
+Crie uma branch (git checkout -b feature/nova-funcionalidade)
+
+Commit suas mudanças (git commit -am 'Adiciona nova funcionalidade')
+
+Push para a branch (git push origin feature/nova-funcionalidade)
+
+Abra um Pull Request
+
+🐛 Problemas conhecidos
+Imagens muito grandes (>10MB) podem causar lentidão
+
+O simulador 3D ainda está em desenvolvimento
+
+Alguns caracteres especiais no nome do arquivo podem causar erros
+
+📈 Roadmap
+Simulador 3D com Three.js
+
+Suporte a múltiplas ferramentas
+
+Algoritmos de otimização avançados
+
+Exportação para formatos específicos (Mach3, LinuxCNC, GRBL)
+
+Biblioteca de exemplos
+
+Modo batch para múltiplas imagens
+
+📄 Licença
+Este projeto está licenciado sob a licença MIT - veja o arquivo LICENSE para detalhes.
+
+👥 Contribuidores
+Seu Nome - @seu-github
+
+🙏 Agradecimentos
+Comunidade CNC
+
+Desenvolvedores de código aberto
+
+Testadores e usuários
+
+📞 Suporte
+Abra uma issue no GitHub
+
+Envie um email para suporte@exemplo.com
+
+Visite nosso site
+
+Feito com ❤️ para a comunidade CNC
+
+text
+
+## 10. **Configuração do GitHub Desktop**
+
+1. **Abra o GitHub Desktop**
+2. **File > Add local repository**
+3. **Navegue até a pasta `image-to-gcode`**
+4. **Clique em "Add repository"**
+5. **Faça o primeiro commit:**
+   - Summary: "Initial commit - Professional Image to G-Code Converter"
+   - Description: "Complete professional application for converting images to G-Code with simulator"
+   - Clique em "Commit to main"
+6. **Publique no GitHub:**
+   - Clique em "Publish repository"
+   - Desmarque "Keep this code private" se quiser público
+   - Clique em "Publish repository"
+
+## Como usar no VSCode
+
+1. **Abra o VSCode**
+2. **File > Open Folder > selecione a pasta `image-to-gcode`**
+3. **Abra o terminal integrado** (Ctrl + ')
+4. **Execute:**
+```bash
+npm install
+npm start
