@@ -1,0 +1,19 @@
+{
+  "name": "image-to-gcode-converter",
+  "version": "1.0.0",
+  "description": "Conversor profissional de imagens para G-Code CNC com simulador integrado",
+  "main": "src/index.html",
+  "scripts": {
+    "start": "live-server src --port=3000",
+    "build": "copyfiles -u 1 src/**/* dist",
+    "deploy": "gh-pages -d src"
+  },
+  "keywords": ["cnc", "gcode", "image-processing", "cad-cam"],
+  "author": "Seu Nome",
+  "license": "MIT",
+  "devDependencies": {
+    "live-server": "^1.2.2",
+    "copyfiles": "^2.4.1",
+    "gh-pages": "^5.0.0"
+  }
+}
